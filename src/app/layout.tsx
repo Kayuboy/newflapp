@@ -5,8 +5,8 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Platforma pro učení pracovních dovedností',
-  description: 'Mobilně optimalizovaná platforma pro učení pracovních dovedností s kategoriemi',
+  title: 'HoWToFL',
+  description: 'HoWToFL',
 };
 
 export default function RootLayout({
