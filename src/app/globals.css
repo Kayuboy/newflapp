@@ -1,0 +1,237 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 40, 30, 40;
+  --primary-color: #f8a287;
+  --secondary-color: #e27d60;
+  --accent-color: #f8a287;
+  --card-bg: #2d242c;
+  --card-light-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-rgb: 30, 41, 59;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  min-height: 100vh;
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.app-background::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background-color: rgba(248, 162, 135, 0.2);
+}
+
+.app-background::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background-color: rgba(248, 162, 135, 0.15);
+}
+
+@layer components {
+  .mobile-container {
+    @apply bg-[#2d242c] rounded-3xl overflow-hidden shadow-xl p-6 relative;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 2rem 2rem 2rem 2rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 4rem;
+    overflow-y: visible;
+    min-height: 700px;
+    
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) rgba(0, 0, 0, 0.1);
+    
+    @media (max-width: 360px) {
+      padding: 1rem;
+      padding-bottom: 4rem;
+      border-radius: 1.5rem;
+      margin-bottom: 1.5rem;
+      min-height: 650px;
+    }
+    
+    @media (min-width: 768px) {
+      max-width: 600px;
+      border-radius: 2rem;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 4rem;
+      min-height: 700px;
+    }
+    
+    @media (min-width: 1024px) {
+      max-width: 800px;
+      min-height: 750px;
+    }
+    
+    @media (min-width: 1280px) {
+      max-width: 1000px;
+      min-height: 800px;
+    }
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background-color: var(--primary-color);
+      border-radius: 10px;
+    }
+  }
+  
+  .search-input {
+    @apply w-full px-4 py-3 bg-white text-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-[#f8a287];
+  }
+  
+  .search-button {
+    @apply p-3 bg-[#f8a287] text-white rounded-full hover:bg-[#e27d60] transition-colors;
+  }
+  
+  .category-stat {
+    @apply flex flex-col items-center justify-center p-4 rounded-xl text-white;
+  }
+  
+  .category-card {
+    @apply flex items-center p-4 bg-white rounded-xl mb-3 text-gray-800 hover:shadow-md transition-shadow;
+  }
+  
+  .category-icon {
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-white mr-3;
+  }
+  
+  .back-button {
+    @apply p-2 rounded-full hover:bg-gray-700/50 transition-colors;
+  }
+  
+  .bookmark-button {
+    @apply p-2 bg-[#f8a287] rounded-full text-white hover:bg-[#e27d60] transition-colors;
+  }
+  
+  .company-logo {
+    @apply w-16 h-16 bg-white rounded-full flex items-center justify-center;
+  }
+  
+  .apply-button {
+    @apply w-full py-3 px-6 bg-[#f8a287] text-white rounded-full flex items-center justify-between hover:bg-[#e27d60] transition-colors;
+  }
+  
+  .desktop-container {
+    @apply w-full mx-auto flex justify-center items-center;
+    max-width: 100%;
+    min-height: 100vh;
+    position: relative;
+    padding: 0;
+    
+    @media (min-width: 768px) {
+      max-width: 100%;
+      padding: 1rem;
+    }
+    
+    @media (min-width: 1024px) {
+      max-width: 100%;
+    }
+    
+    @media (min-width: 1280px) {
+      max-width: 100%;
+    }
+  }
+  
+  .sticky-header {
+    @apply sticky top-0 bg-[#2d242c] z-10 py-2 mb-3;
+    padding-bottom: 0.75rem;
+  }
+  
+  /* Styly pro bubliny sub-contentu */
+  .subcontent-container {
+    @apply flex flex-wrap gap-3 mt-4;
+  }
+  
+  .subcontent-bubble {
+    @apply flex flex-col items-center justify-center p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 transition-all;
+    width: 80px;
+    height: 80px;
+    cursor: pointer;
+  }
+  
+  .subcontent-bubble:hover {
+    @apply bg-white/20 transform scale-105;
+  }
+  
+  .subcontent-bubble.active {
+    @apply bg-[#f8a287]/30 border-[#f8a287];
+  }
+  
+  .subcontent-icon {
+    @apply w-8 h-8 mb-1 text-white;
+  }
+  
+  .subcontent-title {
+    @apply text-xs text-center font-medium text-white;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .subcontent-form {
+    @apply bg-[#3a2f39] rounded-xl p-4 mt-4 border border-white/10;
+  }
+  
+  .subcontent-input {
+    @apply w-full px-3 py-2 bg-white/10 text-white rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#f8a287];
+  }
+  
+  .subcontent-select {
+    @apply w-full px-3 py-2 bg-white/10 text-white rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#f8a287];
+  }
+  
+  .subcontent-button {
+    @apply px-4 py-2 bg-[#f8a287] text-white rounded-lg hover:bg-[#e27d60] transition-colors;
+  }
+  
+  .subcontent-detail {
+    @apply bg-[#3a2f39] rounded-xl p-4 mt-4 border border-white/10;
+  }
+} 
