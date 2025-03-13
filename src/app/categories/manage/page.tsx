@@ -2,11 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ICategory } from '@/models/Category';
 import CategoryForm from '@/components/CategoryForm';
 import { renderIcon } from '@/utils/renderIcon';
+import { useAuth } from '@/context/AuthContext';
+import { Box, Typography, Button, Paper, CircularProgress, Alert } from '@mui/material';
+import { Person } from '@mui/icons-material';
 
 export default function ManageCategoriesPage() {
+  const { isAuthenticated, isAdmin, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
   const [categories, setCategories] = useState<ICategory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +40,87 @@ export default function ManageCategoriesPage() {
       setLoading(false);
     }
   };
+
+  // Kontrola autorizace
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      // Uživatel není přihlášen, ale necháme ho na stránce s upozorněním
+    } else if (!authLoading && isAuthenticated && !isAdmin) {
+      // Uživatel je přihlášen, ale není admin, přesměrujeme ho
+      router.push('/');
+    }
+  }, [authLoading, isAuthenticated, isAdmin, router]);
+
+  // Pokud stále probíhá autentizace, zobrazíme načítání
+  if (authLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Pokud uživatel není přihlášen, zobrazíme výzvu k přihlášení
+  if (!isAuthenticated) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        p: 3 
+      }}>
+        <Paper elevation={3} sx={{ 
+          p: 4, 
+          maxWidth: 500, 
+          width: '100%', 
+          textAlign: 'center',
+          bgcolor: 'rgba(30, 30, 30, 0.7)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: 2
+        }}>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-full bg-[#f8a287] flex items-center justify-center">
+              <Person sx={{ fontSize: 40, color: 'white' }} />
+            </div>
+          </div>
+          <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'white' }}>
+            Přístup odmítnut
+          </Typography>
+          <Alert severity="warning" sx={{ 
+            mb: 3, 
+            bgcolor: 'rgba(237, 108, 2, 0.2)', 
+            color: '#ffb74d',
+            border: '1px solid rgba(237, 108, 2, 0.3)',
+            '& .MuiAlert-icon': {
+              color: '#ffb74d'
+            }
+          }}>
+            Tato sekce je dostupná pouze pro administrátory.
+          </Alert>
+          <Typography paragraph sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            Pro správu kategorií se prosím přihlaste jako administrátor.
+          </Typography>
+          <Button 
+            variant="contained" 
+            component={Link} 
+            href="/admin/login"
+            sx={{ 
+              mt: 2,
+              bgcolor: '#f8a287',
+              '&:hover': {
+                bgcolor: '#e27d60',
+              },
+              fontWeight: 'bold'
+            }}
+          >
+            Přejít na přihlášení
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
 
   useEffect(() => {
     fetchCategories();

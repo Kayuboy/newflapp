@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { ICategory } from '@/models/Category';
 import { renderIcon } from '@/utils/renderIcon';
+import AdminGuard from '@/components/AdminGuard';
+import BrandLogin from '@/components/BrandLogin';
 
 export default function Home() {
   const [categories, setCategories] = useState<ICategory[]>([]);
@@ -78,7 +80,7 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div className="container mx-auto px-4">
       <div className="app-background"></div>
       <div className="desktop-container">
         <div className="mobile-container">
@@ -89,15 +91,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
               </button>
-              <div className="w-auto px-2 h-8 bg-[#f8a287] rounded-md flex items-center justify-center text-white text-xs">
-                <div className="flex items-center gap-1">
-                  <span>Crafted with</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
-                    <path d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
-                  </svg>
-                  <span>by Woundy</span>
-                </div>
-              </div>
+              <BrandLogin />
             </div>
           </div>
           
@@ -139,9 +133,11 @@ export default function Home() {
           <div className="mb-5">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-bold">Vaše Kategorie</h3>
-              <Link href="/categories/manage" className="text-sm text-[#f8a287]">
-                Spravovat
-              </Link>
+              <AdminGuard>
+                <Link href="/categories/manage" className="text-sm text-[#f8a287]">
+                  Spravovat
+                </Link>
+              </AdminGuard>
             </div>
             
             {loading ? (
@@ -160,9 +156,11 @@ export default function Home() {
                     ? 'Nebyly nalezeny žádné kategorie odpovídající vašemu vyhledávání.' 
                     : 'Zatím nebyly vytvořeny žádné kategorie.'}
                 </p>
-                <Link href="/categories/manage" className="text-[#f8a287] text-sm hover:underline">
-                  Vytvořit kategorii
-                </Link>
+                <AdminGuard>
+                  <Link href="/categories/manage" className="text-[#f8a287] text-sm hover:underline">
+                    Vytvořit kategorii
+                  </Link>
+                </AdminGuard>
               </div>
             ) : (
               <div className="space-y-3">
@@ -250,6 +248,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 } 
