@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ICategory, ISubContent } from '@/models/Category';
+import { ICategory, ISubCategory } from '@/models/Category';
 import { Types } from 'mongoose';
 import { renderIcon } from '@/utils/renderIcon';
 
-// Rozšíření ISubContent pro správné typování _id
-interface SubContentWithId extends ISubContent {
+// Rozšíření ISubCategory pro správné typování _id
+interface SubCategoryWithId extends ISubCategory {
   _id: string;
 }
 
-// Ikony pro sub-content
+// Ikony pro sub-kategorie
 const iconOptions = [
   { value: 'academic-cap', label: 'Akademická čepice' },
   { value: 'beaker', label: 'Zkumavka' },
@@ -37,24 +37,22 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
   const [error, setError] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
-  const [editingSubContent, setEditingSubContent] = useState<SubContentWithId | null>(null);
-  const [addingSubContent, setAddingSubContent] = useState<boolean>(false);
-  const [deletingSubContent, setDeletingSubContent] = useState<string | null>(null);
+  const [editingSubCategory, setEditingSubCategory] = useState<SubCategoryWithId | null>(null);
+  const [addingSubCategory, setAddingSubCategory] = useState<boolean>(false);
+  const [deletingSubCategory, setDeletingSubCategory] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   
-  // Stav pro nový/editovaný sub-content
-  const [subContentForm, setSubContentForm] = useState<{
-    title: string;
+  // Stav pro novou/editovanou subkategorii
+  const [subCategoryForm, setSubCategoryForm] = useState<{
+    name: string;
     icon: string;
     description: string;
-    content: string;
     color: string;
   }>({
-    title: '',
-    icon: 'academic-cap',
+    name: '',
+    icon: 'puzzle',
     description: '',
-    content: '',
-    color: '#f8a287',
+    color: '#87b8f8',
   });
 
   useEffect(() => {
@@ -86,128 +84,126 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
     // Zde by byla implementace ukládání záložky do databáze
   };
   
-  const handleAddSubContent = async (e: React.FormEvent) => {
+  const handleAddSubCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!category) return;
     
     try {
-      setAddingSubContent(true);
+      setAddingSubCategory(true);
       setAddError(null);
       
-      console.log('Odesílám data:', subContentForm);
-      console.log('Na endpoint:', `/api/categories/${params.id}/subcontent`);
+      console.log('Odesílám data:', subCategoryForm);
+      console.log('Na endpoint:', `/api/categories/${params.id}/subcategory`);
       
-      const response = await fetch(`/api/categories/${params.id}/subcontent`, {
+      const response = await fetch(`/api/categories/${params.id}/subcategory`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(subContentForm),
+        body: JSON.stringify(subCategoryForm),
       });
       
       const responseData = await response.json();
       console.log('Odpověď serveru:', responseData);
       
       if (!response.ok) {
-        throw new Error(responseData.error || 'Nepodařilo se přidat sub-content');
+        throw new Error(responseData.error || 'Nepodařilo se přidat subkategorii');
       }
       
-      console.log('Sub-content úspěšně přidán');
+      console.log('Subkategorie úspěšně přidána');
       setCategory(responseData);
       setShowAddForm(false);
-      resetSubContentForm();
+      resetSubCategoryForm();
     } catch (err: any) {
-      console.error('Chyba při přidávání sub-contentu:', err);
-      setAddError(err.message || 'Nastala chyba při přidávání sub-contentu. Zkuste to prosím později.');
+      console.error('Chyba při přidávání subkategorie:', err);
+      setAddError(err.message || 'Nastala chyba při přidávání subkategorie. Zkuste to prosím později.');
     } finally {
-      setAddingSubContent(false);
+      setAddingSubCategory(false);
     }
   };
   
-  const handleUpdateSubContent = async (e: React.FormEvent) => {
+  const handleUpdateSubCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!category || !editingSubContent?._id) return;
+    if (!category || !editingSubCategory?._id) return;
     
     try {
-      setAddingSubContent(true);
+      setAddingSubCategory(true);
       setAddError(null);
       
-      const response = await fetch(`/api/categories/${params.id}/subcontent/${editingSubContent._id}`, {
+      const response = await fetch(`/api/categories/${params.id}/subcategory/${editingSubCategory._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(subContentForm),
+        body: JSON.stringify(subCategoryForm),
       });
       
       const responseData = await response.json();
       
       if (!response.ok) {
-        throw new Error(responseData.error || 'Nepodařilo se aktualizovat sub-content');
+        throw new Error(responseData.error || 'Nepodařilo se aktualizovat subkategorii');
       }
       
       setCategory(responseData);
-      setEditingSubContent(null);
-      resetSubContentForm();
+      setEditingSubCategory(null);
+      resetSubCategoryForm();
     } catch (err: any) {
-      console.error('Chyba při aktualizaci sub-contentu:', err);
-      setAddError(err.message || 'Nastala chyba při aktualizaci sub-contentu. Zkuste to prosím později.');
+      console.error('Chyba při aktualizaci subkategorie:', err);
+      setAddError(err.message || 'Nastala chyba při aktualizaci subkategorie. Zkuste to prosím později.');
     } finally {
-      setAddingSubContent(false);
+      setAddingSubCategory(false);
     }
   };
   
-  const handleDeleteSubContent = async (subContentId: string) => {
-    if (!window.confirm('Opravdu chcete smazat tento obsah?')) return;
+  const handleDeleteSubCategory = async (subCategoryId: string) => {
+    if (!window.confirm('Opravdu chcete smazat tuto subkategorii? Budou smazány také všechny její obsahy.')) return;
     
     try {
-      setDeletingSubContent(subContentId);
+      setDeletingSubCategory(subCategoryId);
       
-      const response = await fetch(`/api/categories/${params.id}/subcontent/${subContentId}`, {
+      const response = await fetch(`/api/categories/${params.id}/subcategory/${subCategoryId}`, {
         method: 'DELETE',
       });
       
       const responseData = await response.json();
       
       if (!response.ok) {
-        throw new Error(responseData.error || 'Nepodařilo se smazat sub-content');
+        throw new Error(responseData.error || 'Nepodařilo se smazat subkategorii');
       }
       
       setCategory(responseData);
     } catch (err: any) {
-      console.error('Chyba při mazání sub-contentu:', err);
-      alert(err.message || 'Nastala chyba při mazání sub-contentu. Zkuste to prosím později.');
+      console.error('Chyba při mazání subkategorie:', err);
+      alert(err.message || 'Nastala chyba při mazání subkategorie. Zkuste to prosím později.');
     } finally {
-      setDeletingSubContent(null);
+      setDeletingSubCategory(null);
     }
   };
   
-  const startEditingSubContent = (subContent: SubContentWithId) => {
-    setEditingSubContent(subContent);
-    setSubContentForm({
-      title: subContent.title,
-      icon: subContent.icon,
-      description: subContent.description || '',
-      content: subContent.content || '',
-      color: subContent.color || '#f8a287',
+  const startEditingSubCategory = (subCategory: SubCategoryWithId) => {
+    setEditingSubCategory(subCategory);
+    setSubCategoryForm({
+      name: subCategory.name,
+      icon: subCategory.icon || 'puzzle',
+      description: subCategory.description,
+      color: subCategory.color || '#87b8f8',
     });
   };
   
-  const resetSubContentForm = () => {
-    setSubContentForm({
-      title: '',
-      icon: 'academic-cap',
+  const resetSubCategoryForm = () => {
+    setSubCategoryForm({
+      name: '',
+      icon: 'puzzle',
       description: '',
-      content: '',
-      color: '#f8a287',
+      color: '#87b8f8',
     });
   };
   
   const cancelEditing = () => {
-    setEditingSubContent(null);
-    resetSubContentForm();
+    setEditingSubCategory(null);
+    resetSubCategoryForm();
   };
 
   return (
@@ -277,16 +273,16 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
               
               <div className="mb-5">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-lg font-semibold">Obsah kategorie</h2>
+                  <h2 className="text-lg font-semibold">Subkategorie</h2>
                   <button 
                     onClick={() => {
                       setShowAddForm(!showAddForm);
-                      setEditingSubContent(null);
-                      resetSubContentForm();
+                      setEditingSubCategory(null);
+                      resetSubCategoryForm();
                     }} 
                     className="px-3 py-1 bg-[#f8a287] text-white rounded-lg text-sm hover:bg-[#e27d60] transition-colors"
                   >
-                    {showAddForm ? 'Zrušit' : 'Přidat obsah'}
+                    {showAddForm ? 'Zrušit' : 'Přidat subkategorii'}
                   </button>
                 </div>
                 
@@ -297,23 +293,23 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                   </div>
                 )}
                 
-                {/* Formulář pro přidání/úpravu sub-contentu */}
-                {(showAddForm || editingSubContent) && (
-                  <div className="subcontent-form mb-5">
+                {/* Formulář pro přidání/úpravu subkategorie */}
+                {(showAddForm || editingSubCategory) && (
+                  <div className="subcategory-form mb-5">
                     <h3 className="text-md font-semibold mb-3">
-                      {editingSubContent ? 'Upravit obsah' : 'Přidat nový obsah'}
+                      {editingSubCategory ? 'Upravit subkategorii' : 'Přidat novou subkategorii'}
                     </h3>
-                    <form onSubmit={editingSubContent ? handleUpdateSubContent : handleAddSubContent}>
+                    <form onSubmit={editingSubCategory ? handleUpdateSubCategory : handleAddSubCategory}>
                       <div className="mb-3">
-                        <label htmlFor="title" className="block text-sm font-medium mb-1">Název</label>
+                        <label htmlFor="name" className="block text-sm font-medium mb-1">Název</label>
                         <input
                           type="text"
-                          id="title"
+                          id="name"
                           className="subcontent-input"
-                          value={subContentForm.title}
-                          onChange={(e) => setSubContentForm({...subContentForm, title: e.target.value})}
+                          value={subCategoryForm.name}
+                          onChange={(e) => setSubCategoryForm({...subCategoryForm, name: e.target.value})}
                           required
-                          maxLength={50}
+                          maxLength={100}
                         />
                       </div>
                       
@@ -322,8 +318,8 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                         <select
                           id="icon"
                           className="subcontent-select"
-                          value={subContentForm.icon}
-                          onChange={(e) => setSubContentForm({...subContentForm, icon: e.target.value})}
+                          value={subCategoryForm.icon}
+                          onChange={(e) => setSubCategoryForm({...subCategoryForm, icon: e.target.value})}
                         >
                           {iconOptions.map(option => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -336,21 +332,11 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                         <textarea
                           id="description"
                           className="subcontent-input"
-                          value={subContentForm.description}
-                          onChange={(e) => setSubContentForm({...subContentForm, description: e.target.value})}
-                          rows={2}
-                          maxLength={200}
-                        ></textarea>
-                      </div>
-                      
-                      <div className="mb-3">
-                        <label htmlFor="content" className="block text-sm font-medium mb-1">Obsah</label>
-                        <textarea
-                          id="content"
-                          className="subcontent-input"
-                          value={subContentForm.content}
-                          onChange={(e) => setSubContentForm({...subContentForm, content: e.target.value})}
-                          rows={4}
+                          value={subCategoryForm.description}
+                          onChange={(e) => setSubCategoryForm({...subCategoryForm, description: e.target.value})}
+                          rows={3}
+                          maxLength={300}
+                          required
                         ></textarea>
                       </div>
                       
@@ -360,8 +346,8 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                           type="color"
                           id="color"
                           className="w-full h-10 rounded-lg cursor-pointer"
-                          value={subContentForm.color}
-                          onChange={(e) => setSubContentForm({...subContentForm, color: e.target.value})}
+                          value={subCategoryForm.color}
+                          onChange={(e) => setSubCategoryForm({...subCategoryForm, color: e.target.value})}
                         />
                       </div>
                       
@@ -369,19 +355,19 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                         <button 
                           type="submit" 
                           className="subcontent-button flex-1 flex items-center justify-center"
-                          disabled={addingSubContent}
+                          disabled={addingSubCategory}
                         >
-                          {addingSubContent ? (
+                          {addingSubCategory ? (
                             <>
                               <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
-                              <span>{editingSubContent ? 'Upravuji...' : 'Přidávám...'}</span>
+                              <span>{editingSubCategory ? 'Upravuji...' : 'Přidávám...'}</span>
                             </>
                           ) : (
-                            <span>{editingSubContent ? 'Uložit změny' : 'Přidat obsah'}</span>
+                            <span>{editingSubCategory ? 'Uložit změny' : 'Přidat subkategorii'}</span>
                           )}
                         </button>
                         
-                        {editingSubContent && (
+                        {editingSubCategory && (
                           <button 
                             type="button" 
                             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -395,78 +381,90 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
                   </div>
                 )}
                 
-                {/* Zobrazení sub-contentu přímo v containeru */}
-                <div className="space-y-4">
-                  {category?.subContents && category.subContents.length > 0 ? (
-                    category.subContents.map((subContent, index) => {
-                      // Kontrola, že subContent má _id a je to string
-                      const subContentWithId = subContent as SubContentWithId;
+                {/* Zobrazení subkategorií */}
+                <div className="space-y-3">
+                  {category?.subCategories && category.subCategories.length > 0 ? (
+                    category.subCategories.map((subCategory, index) => {
+                      // Kontrola, že subCategory má _id a je to string
+                      const subCategoryWithId = subCategory as SubCategoryWithId;
+                      const subContentCount = subCategory.subContents?.length || 0;
+                      
                       return (
-                        <div 
+                        <Link 
+                          href={`/categories/${params.id}/subcategory/${subCategoryWithId._id}`}
                           key={index} 
-                          className="bg-[#3a2f39] rounded-xl p-4 border border-white/10"
+                          className="category-card block"
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center">
-                              <div 
-                                className="w-10 h-10 rounded-full flex items-center justify-center mr-3" 
-                                style={{ backgroundColor: subContent.color || '#f8a287' }}
-                              >
-                                {renderIcon(subContent.icon, "subcontent-icon")}
-                              </div>
-                              <h3 className="text-lg font-semibold">{subContent.title}</h3>
+                          <div className="flex items-center">
+                            <div 
+                              className="category-icon"
+                              style={{ backgroundColor: subCategory.color || '#87b8f8' }}
+                            >
+                              {renderIcon(subCategory.icon || 'puzzle', "w-5 h-5 text-white")}
                             </div>
-                            
+                            <div className="flex-1">
+                              <h4 className="font-semibold">{subCategory.name}</h4>
+                              <p className="text-sm text-gray-500 line-clamp-1">{subCategory.description}</p>
+                            </div>
                             <div className="flex space-x-2">
                               <button 
-                                onClick={() => startEditingSubContent(subContentWithId)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  startEditingSubCategory(subCategoryWithId);
+                                }}
                                 className="p-2 bg-blue-500/30 rounded-full text-white hover:bg-blue-600/30 transition-colors"
                                 title="Upravit"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                                 </svg>
                               </button>
                               
                               <button 
-                                onClick={() => handleDeleteSubContent(String(subContentWithId._id))}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDeleteSubCategory(String(subCategoryWithId._id));
+                                }}
                                 className="p-2 bg-red-500/30 rounded-full text-white hover:bg-red-600/30 transition-colors"
                                 title="Smazat"
-                                disabled={deletingSubContent === String(subContentWithId._id)}
+                                disabled={deletingSubCategory === String(subCategoryWithId._id)}
                               >
-                                {deletingSubContent === String(subContentWithId._id) ? (
-                                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                {deletingSubCategory === String(subCategoryWithId._id) ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
                                 ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                   </svg>
                                 )}
                               </button>
                             </div>
-                          </div>
-                          
-                          {subContent.description && (
-                            <p className="text-gray-300 mb-3">{subContent.description}</p>
-                          )}
-                          
-                          {subContent.content && (
-                            <div className="bg-white/5 p-4 rounded-lg">
-                              <p className="text-gray-200 whitespace-pre-line">{subContent.content}</p>
+                            <div className="text-[#87b8f8] ml-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                              </svg>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        </Link>
                       );
                     })
                   ) : (
-                    <div className="text-center w-full py-4 text-gray-400">
-                      <p>Zatím nebyl přidán žádný obsah. Přidejte první!</p>
+                    <div className="text-center py-6 bg-gray-800/30 rounded-xl mb-4">
+                      <h2 className="text-lg font-semibold mb-2">Žádné subkategorie</h2>
+                      <p className="text-gray-400 mb-4 text-sm">
+                        Zatím nebyly vytvořeny žádné subkategorie.
+                      </p>
+                      <button
+                        onClick={() => setShowAddForm(true)}
+                        className="text-[#f8a287] text-sm hover:underline"
+                      >
+                        Vytvořit subkategorii
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
-              
-              
-              
             </>
           )}
         </div>
