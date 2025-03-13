@@ -224,7 +224,7 @@ body {
   }
   
   .subcontent-select {
-    @apply w-full px-3 py-2 bg-white/10 text-white rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#f8a287];
+    @apply w-full px-3 py-2 bg-white text-gray-900 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#f8a287];
   }
   
   .subcontent-button {

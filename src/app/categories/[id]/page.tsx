@@ -15,6 +15,8 @@ interface SubCategoryWithId extends ISubCategory {
 const iconOptions = [
   { value: 'academic-cap', label: 'Akademická čepice' },
   { value: 'beaker', label: 'Zkumavka' },
+  { value: 'book-open', label: 'Otevřená kniha' },
+  { value: 'calculator', label: 'Kalkulačka' },
   { value: 'chart-bar', label: 'Graf' },
   { value: 'code', label: 'Kód' },
   { value: 'cog', label: 'Ozubené kolo' },
@@ -29,6 +31,18 @@ const iconOptions = [
   { value: 'star', label: 'Hvězda' },
   { value: 'user-group', label: 'Skupina uživatelů' },
   { value: 'video-camera', label: 'Kamera' },
+  { value: 'heart', label: 'Srdce' },
+  { value: 'trophy', label: 'Trofej' },
+  { value: 'lock-closed', label: 'Zámek' },
+  { value: 'currency-dollar', label: 'Dolar' },
+  { value: 'cloud', label: 'Mrak' },
+  { value: 'shopping-cart', label: 'Nákupní košík' },
+  { value: 'device-phone-mobile', label: 'Mobilní telefon' },
+  { value: 'photo', label: 'Fotografie' },
+  { value: 'musical-note', label: 'Hudební nota' },
+  { value: 'chat-bubble-left-right', label: 'Konverzace' },
+  { value: 'map', label: 'Mapa' },
+  { value: 'rocket-launch', label: 'Raketa' },
 ];
 
 export default function CategoryDetailPage({ params }: { params: { id: string } }) {
