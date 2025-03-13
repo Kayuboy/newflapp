@@ -138,6 +138,9 @@ export async function PUT(
     subContents[subContentIndex].description = data.description || subContents[subContentIndex].description;
     subContents[subContentIndex].content = data.content || subContents[subContentIndex].content;
     subContents[subContentIndex].color = data.color || subContents[subContentIndex].color;
+    subContents[subContentIndex].imageUrls = data.imageUrls || subContents[subContentIndex].imageUrls;
+    subContents[subContentIndex].alternativeTexts = data.alternativeTexts || subContents[subContentIndex].alternativeTexts;
+    subContents[subContentIndex].imageContents = data.imageContents || subContents[subContentIndex].imageContents;
     
     await category.save();
     
@@ -214,6 +217,80 @@ export async function DELETE(
   } catch (error) {
     return NextResponse.json(
       { error: 'Nastala chyba při mazání subcontentu' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string; subCategoryId: string; subContentId: string } }
+) {
+  try {
+    const categoryId = params.id;
+    const subCategoryId = params.subCategoryId;
+    const subContentId = params.subContentId;
+
+    // Ověření platnosti ID
+    if (!mongoose.Types.ObjectId.isValid(categoryId) || 
+        !mongoose.Types.ObjectId.isValid(subCategoryId) ||
+        !mongoose.Types.ObjectId.isValid(subContentId)) {
+      return NextResponse.json({ error: 'Neplatné ID' }, { status: 400 });
+    }
+
+    // Připojení k databázi
+    await connectToDatabase();
+
+    // Ověření existence kategorie
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return NextResponse.json({ error: 'Kategorie nenalezena' }, { status: 404 });
+    }
+
+    // Ověření existence subkategorie
+    const subCategory = category.subCategories.id(subCategoryId);
+    if (!subCategory) {
+      return NextResponse.json({ error: 'Subkategorie nenalezena' }, { status: 404 });
+    }
+
+    // Ověření existence subcontentu
+    const subContent = subCategory.subContents.id(subContentId);
+    if (!subContent) {
+      return NextResponse.json({ error: 'Subcontent nenalezen' }, { status: 404 });
+    }
+
+    // Zpracování dat z požadavku
+    const data = await request.json();
+
+    // Ověření povinných polí
+    if (!data.title || !data.icon) {
+      return NextResponse.json(
+        { error: 'Název a ikona jsou povinné' },
+        { status: 400 }
+      );
+    }
+
+    // Aktualizace subcontentu
+    subContent.title = data.title;
+    subContent.icon = data.icon;
+    subContent.description = data.description !== undefined ? data.description : subContent.description;
+    subContent.content = data.content !== undefined ? data.content : subContent.content;
+    subContent.color = data.color || subContent.color;
+    subContent.imageUrls = data.imageUrls || subContent.imageUrls;
+    subContent.alternativeTexts = data.alternativeTexts || subContent.alternativeTexts;
+    subContent.imageContents = data.imageContents || subContent.imageContents;
+
+    // Uložení změn
+    await category.save();
+
+    return NextResponse.json(
+      { message: 'Subcontent byl úspěšně aktualizován' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Chyba při aktualizaci subcontentu:', error);
+    return NextResponse.json(
+      { error: 'Nastala chyba při aktualizaci subcontentu' },
       { status: 500 }
     );
   }

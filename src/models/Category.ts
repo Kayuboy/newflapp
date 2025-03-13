@@ -6,6 +6,9 @@ export interface ISubContent extends Document {
   description?: string;
   content?: string;
   color?: string;
+  imageUrls?: string[];
+  alternativeTexts?: string[];
+  imageContents?: string[];
 }
 
 export interface ISubCategory extends Document {
@@ -52,6 +55,18 @@ const SubContentSchema = new Schema<ISubContent>(
     color: {
       type: String,
       default: '#f8a287',
+    },
+    imageUrls: {
+      type: [String],
+      default: [],
+    },
+    alternativeTexts: {
+      type: [String],
+      default: [],
+    },
+    imageContents: {
+      type: [String],
+      default: [],
     },
   }
 );
