@@ -265,7 +265,7 @@ export default function CategoryDetailPage({ params }: { params: { id: string } 
               
               <div className="mt-10 mb-5">
                 <h1 className="text-2xl font-bold mb-1">{category?.name}</h1>
-                <p className="text-gray-400 text-sm">Kategorie dovedností</p>
+                <p className="text-gray-400 text-sm">Kategorie</p>
               </div>
               
               <div className="mb-5">
