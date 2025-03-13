@@ -4,47 +4,20 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ICategory, ISubCategory, ISubContent } from '@/models/Category';
 import { renderIcon } from '@/utils/renderIcon';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 // Rozšíření ISubContent pro správné typování _id
 interface SubContentWithId extends ISubContent {
   _id: string;
+  // Explicitně uvedu, že používáme pole pro obrázky
+  imageUrls?: string[];
+  alternativeTexts?: string[];
+  imageContents?: string[]; // Přidání nového pole pro obsah obrázků
 }
 
-// Ikony pro sub-content
-const iconOptions = [
-  { value: 'academic-cap', label: 'Akademická čepice' },
-  { value: 'beaker', label: 'Zkumavka' },
-  { value: 'book-open', label: 'Otevřená kniha' },
-  { value: 'calculator', label: 'Kalkulačka' },
-  { value: 'chart-bar', label: 'Graf' },
-  { value: 'code', label: 'Kód' },
-  { value: 'cog', label: 'Ozubené kolo' },
-  { value: 'computer-desktop', label: 'Počítač' },
-  { value: 'document-text', label: 'Dokument' },
-  { value: 'globe', label: 'Globus' },
-  { value: 'light-bulb', label: 'Žárovka' },
-  { value: 'pencil', label: 'Tužka' },
-  { value: 'presentation-chart-line', label: 'Prezentace' },
-  { value: 'wrench', label: 'Nářadí' },
-  { value: 'puzzle', label: 'Puzzle' },
-  { value: 'star', label: 'Hvězda' },
-  { value: 'user-group', label: 'Skupina uživatelů' },
-  { value: 'video-camera', label: 'Kamera' },
-  { value: 'heart', label: 'Srdce' },
-  { value: 'trophy', label: 'Trofej' },
-  { value: 'lock-closed', label: 'Zámek' },
-  { value: 'currency-dollar', label: 'Dolar' },
-  { value: 'cloud', label: 'Mrak' },
-  { value: 'shopping-cart', label: 'Nákupní košík' },
-  { value: 'device-phone-mobile', label: 'Mobilní telefon' },
-  { value: 'photo', label: 'Fotografie' },
-  { value: 'musical-note', label: 'Hudební nota' },
-  { value: 'chat-bubble-left-right', label: 'Konverzace' },
-  { value: 'map', label: 'Mapa' },
-  { value: 'rocket-launch', label: 'Raketa' },
-];
-
 export default function SubCategoryDetailPage({ params }: { params: { id: string; subCategoryId: string } }) {
+  const router = useRouter();
   const [category, setCategory] = useState<ICategory | null>(null);
   const [subCategory, setSubCategory] = useState<ISubCategory | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -55,6 +28,11 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
   const [deletingSubContent, setDeletingSubContent] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   
+  // Stav pro lightbox
+  const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
+  const [lightboxImage, setLightboxImage] = useState<string>('');
+  const [lightboxAlt, setLightboxAlt] = useState<string>('');
+  
   // Stav pro nový/editovaný sub-content
   const [subContentForm, setSubContentForm] = useState<{
     title: string;
@@ -62,13 +40,35 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
     description: string;
     content: string;
     color: string;
+    imageUrls: string[];
+    alternativeTexts: string[];
+    imageContents: string[]; // Přidání pole pro obsah obrázků
   }>({
     title: '',
     icon: 'academic-cap',
     description: '',
     content: '',
     color: '#f8a287',
+    imageUrls: [],
+    alternativeTexts: [],
+    imageContents: [], // Inicializace prázdného pole
   });
+
+  // Funkce pro otevření lightboxu
+  const openLightbox = (imageUrl: string, alt: string = '') => {
+    setLightboxImage(imageUrl);
+    setLightboxAlt(alt);
+    setLightboxOpen(true);
+    // Zamezit scrollování stránky když je lightbox otevřený
+    document.body.style.overflow = 'hidden';
+  };
+  
+  // Funkce pro zavření lightboxu
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    // Vrátit scrollování stránky
+    document.body.style.overflow = 'auto';
+  };
 
   useEffect(() => {
     const fetchSubCategory = async () => {
@@ -234,6 +234,9 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
       description: subContent.description || '',
       content: subContent.content || '',
       color: subContent.color || '#f8a287',
+      imageUrls: subContent.imageUrls || [],
+      alternativeTexts: subContent.alternativeTexts || [],
+      imageContents: subContent.imageContents || [], // Přidání obsahu obrázků z databáze
     });
   };
   
@@ -244,12 +247,114 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
       description: '',
       content: '',
       color: '#f8a287',
+      imageUrls: [],
+      alternativeTexts: [],
+      imageContents: [], // Reset pole s obsahem
     });
   };
   
   const cancelEditing = () => {
     setEditingSubContent(null);
     resetSubContentForm();
+  };
+
+  // Funkce pro nahrání obrázku
+  const uploadImage = async (file: File) => {
+    try {
+      setAddError(null);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Chyba při nahrávání obrázku');
+      }
+      
+      return data.imageUrl;
+    } catch (err: any) {
+      setAddError(err.message || 'Nastala chyba při nahrávání obrázku');
+      return null;
+    }
+  };
+  
+  // Přidání nového obrázku
+  const addImage = (imageUrl: string, altText: string = '', imageContent: string = '') => {
+    setSubContentForm({
+      ...subContentForm,
+      imageUrls: [...subContentForm.imageUrls, imageUrl],
+      alternativeTexts: [...subContentForm.alternativeTexts, altText],
+      imageContents: [...subContentForm.imageContents, imageContent],
+    });
+  };
+
+  // Odstranění obrázku
+  const removeImage = (index: number) => {
+    const newImageUrls = [...subContentForm.imageUrls];
+    const newAltTexts = [...subContentForm.alternativeTexts];
+    const newImageContents = [...subContentForm.imageContents];
+    
+    newImageUrls.splice(index, 1);
+    newAltTexts.splice(index, 1);
+    newImageContents.splice(index, 1);
+    
+    setSubContentForm({
+      ...subContentForm,
+      imageUrls: newImageUrls,
+      alternativeTexts: newAltTexts,
+      imageContents: newImageContents,
+    });
+  };
+
+  // Aktualizace alternativního textu
+  const updateAltText = (index: number, text: string) => {
+    const newAltTexts = [...subContentForm.alternativeTexts];
+    newAltTexts[index] = text;
+    
+    setSubContentForm({
+      ...subContentForm,
+      alternativeTexts: newAltTexts,
+    });
+  };
+
+  // Aktualizace obsahu obrázku
+  const updateImageContent = (index: number, content: string) => {
+    const newImageContents = [...subContentForm.imageContents];
+    newImageContents[index] = content;
+    
+    setSubContentForm({
+      ...subContentForm,
+      imageContents: newImageContents,
+    });
+  };
+  
+  // Zpracování změny souboru
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (file) {
+      // Vytvoření náhledu pro okamžité zobrazení
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const result = reader.result as string;
+        
+        // Nahrání obrázku na server
+        const imageUrl = await uploadImage(file);
+        if (imageUrl) {
+          addImage(imageUrl, '', '');
+        } else {
+          // Fallback na lokální náhled, pokud nahrání selže
+          addImage(result, '', '');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -371,9 +476,92 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                           value={subContentForm.icon}
                           onChange={(e) => setSubContentForm({...subContentForm, icon: e.target.value})}
                         >
-                          {iconOptions.map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
+                          <option value="academic-cap">Akademická čepice</option>
+                          <option value="adjustments">Nastavení</option>
+                          <option value="annotation">Anotace</option>
+                          <option value="archive">Archiv</option>
+                          <option value="arrow-down">Šipka dolů</option>
+                          <option value="arrow-up">Šipka nahoru</option>
+                          <option value="bell">Zvonek</option>
+                          <option value="book-open">Otevřená kniha</option>
+                          <option value="briefcase">Kufřík</option>
+                          <option value="calculator">Kalkulačka</option>
+                          <option value="calendar">Kalendář</option>
+                          <option value="camera">Fotoaparát</option>
+                          <option value="cash">Peníze</option>
+                          <option value="chart-bar">Graf</option>
+                          <option value="chart-pie">Koláčový graf</option>
+                          <option value="chat">Chat</option>
+                          <option value="check-circle">Zaškrtávací kolečko</option>
+                          <option value="cloud">Mrak</option>
+                          <option value="code">Kód</option>
+                          <option value="cog">Ozubené kolo</option>
+                          <option value="collection">Kolekce</option>
+                          <option value="color-swatch">Barva</option>
+                          <option value="credit-card">Kreditní karta</option>
+                          <option value="cube">Kostka</option>
+                          <option value="database">Databáze</option>
+                          <option value="desktop-computer">Počítač</option>
+                          <option value="document">Dokument</option>
+                          <option value="download">Stáhnout</option>
+                          <option value="exclamation">Vykřičník</option>
+                          <option value="external-link">Externí odkaz</option>
+                          <option value="eye">Oko</option>
+                          <option value="filter">Filtr</option>
+                          <option value="folder">Složka</option>
+                          <option value="globe">Globus</option>
+                          <option value="home">Domů</option>
+                          <option value="inbox">Inbox</option>
+                          <option value="information-circle">Informace</option>
+                          <option value="key">Klíč</option>
+                          <option value="library">Knihovna</option>
+                          <option value="light-bulb">Žárovka</option>
+                          <option value="lightning-bolt">Blesk</option>
+                          <option value="link">Odkaz</option>
+                          <option value="location-marker">Místo</option>
+                          <option value="lock-closed">Zamčený zámek</option>
+                          <option value="lock-open">Otevřený zámek</option>
+                          <option value="mail">E-mail</option>
+                          <option value="map">Mapa</option>
+                          <option value="menu">Menu</option>
+                          <option value="microphone">Mikrofon</option>
+                          <option value="minus">Minus</option>
+                          <option value="moon">Měsíc</option>
+                          <option value="music-note">Hudební nota</option>
+                          <option value="newspaper">Noviny</option>
+                          <option value="office-building">Budova</option>
+                          <option value="paper-airplane">Papírové letadlo</option>
+                          <option value="paper-clip">Sponka</option>
+                          <option value="pencil">Tužka</option>
+                          <option value="phone">Telefon</option>
+                          <option value="photograph">Fotografie</option>
+                          <option value="plus">Plus</option>
+                          <option value="puzzle">Puzzle</option>
+                          <option value="refresh">Obnovit</option>
+                          <option value="search">Hledat</option>
+                          <option value="share">Sdílet</option>
+                          <option value="shield-check">Štít s kontrolou</option>
+                          <option value="shopping-bag">Nákupní taška</option>
+                          <option value="shopping-cart">Nákupní košík</option>
+                          <option value="star">Hvězda</option>
+                          <option value="sun">Slunce</option>
+                          <option value="support">Podpora</option>
+                          <option value="tag">Tag</option>
+                          <option value="thumb-up">Palec nahoru</option>
+                          <option value="ticket">Lístek</option>
+                          <option value="translate">Přeložit</option>
+                          <option value="trash">Koš</option>
+                          <option value="trending-up">Rostoucí trend</option>
+                          <option value="truck">Nákladní auto</option>
+                          <option value="upload">Nahrát</option>
+                          <option value="user">Uživatel</option>
+                          <option value="users">Uživatelé</option>
+                          <option value="video-camera">Video kamera</option>
+                          <option value="view-grid">Mřížka</option>
+                          <option value="volume-up">Zvuk nahoru</option>
+                          <option value="wifi">Wi-Fi</option>
+                          <option value="x-circle">X v kruhu</option>
+                          <option value="zoom-in">Přiblížit</option>
                         </select>
                       </div>
                       
@@ -411,16 +599,100 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                         />
                       </div>
                       
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1">Obrázky</label>
+                        <div className="mb-2">
+                          <label htmlFor="image" className="flex items-center justify-center w-full px-4 py-2 border border-gray-300 border-dashed rounded-md cursor-pointer bg-white hover:bg-gray-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                            <span>Přidat obrázek</span>
+                            <input
+                              type="file"
+                              id="image"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleFileChange}
+                            />
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Podporované formáty: JPG, PNG, GIF, WEBP, SVG. Max. velikost: 5MB
+                          </p>
+                        </div>
+                        
+                        {/* Seznam nahraných obrázků */}
+                        {subContentForm.imageUrls.length > 0 && (
+                          <div className="space-y-4 mt-3">
+                            <h4 className="text-sm font-medium">Nahrané obrázky:</h4>
+                            {subContentForm.imageUrls.map((url, index) => (
+                              <div key={index} className="flex flex-col md:flex-row gap-3 p-3 bg-white/10 rounded-lg">
+                                <div className="w-full md:w-40 h-40 relative rounded-lg overflow-hidden border border-gray-700">
+                                  <Image
+                                    src={url}
+                                    alt={subContentForm.alternativeTexts[index] || ''}
+                                    fill
+                                    sizes="(max-width: 640px) 100vw, 160px"
+                                    className="object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImage(index)}
+                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                                <div className="flex-1 flex flex-col space-y-3">
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Alternativní text pro obrázek {index + 1}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      className="subcontent-input"
+                                      value={subContentForm.alternativeTexts[index] || ''}
+                                      onChange={(e) => updateAltText(index, e.target.value)}
+                                      placeholder="Popis obrázku pro přístupnost"
+                                      maxLength={100}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Max. 100 znaků. Popis pomáhá uživatelům se zrakovým omezením.
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Obsah k obrázku {index + 1}
+                                    </label>
+                                    <textarea
+                                      className="subcontent-input"
+                                      value={subContentForm.imageContents[index] || ''}
+                                      onChange={(e) => updateImageContent(index, e.target.value)}
+                                      placeholder="Zadejte text, který se zobrazí u tohoto obrázku"
+                                      rows={3}
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="flex gap-2">
                         <button 
                           type="submit" 
                           className="subcontent-button flex-1 flex items-center justify-center"
-                          style={{ backgroundColor: subCategory.color || '#87b8f8' }}
+                          style={{ backgroundColor: subCategory?.color || '#87b8f8' }}
                           disabled={addingSubContent}
                         >
                           {addingSubContent ? (
                             <>
-                              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
                               <span>{editingSubContent ? 'Upravuji...' : 'Přidávám...'}</span>
                             </>
                           ) : (
@@ -444,7 +716,7 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                 
                 {/* Zobrazení sub-contentu přímo v containeru */}
                 <div className="space-y-4">
-                  {subCategory.subContents && subCategory.subContents.length > 0 ? (
+                  {subCategory?.subContents && subCategory.subContents.length > 0 ? (
                     subCategory.subContents.map((subContent, index) => {
                       // Kontrola, že subContent má _id a je to string
                       const subContentWithId = subContent as SubContentWithId;
@@ -459,7 +731,7 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                                 className="w-10 h-10 rounded-full flex items-center justify-center mr-3" 
                                 style={{ backgroundColor: subContent.color || '#f8a287' }}
                               >
-                                {renderIcon(subContent.icon, "subcontent-icon")}
+                                {renderIcon(subContent.icon, "w-5 h-5 text-white")}
                               </div>
                               <h3 className="text-lg font-semibold">{subContent.title}</h3>
                             </div>
@@ -471,7 +743,7 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                                 title="Upravit"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                 </svg>
                               </button>
                               
@@ -482,25 +754,80 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                                 disabled={deletingSubContent === String(subContentWithId._id)}
                               >
                                 {deletingSubContent === String(subContentWithId._id) ? (
-                                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
                                 ) : (
                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                   </svg>
                                 )}
                               </button>
                             </div>
                           </div>
                           
-                          {subContent.description && (
-                            <p className="text-gray-300 mb-3">{subContent.description}</p>
-                          )}
-                          
-                          {subContent.content && (
-                            <div className="bg-white/5 p-4 rounded-lg">
-                              <p className="text-gray-200 whitespace-pre-line">{subContent.content}</p>
-                            </div>
-                          )}
+                          <div className="mt-3">
+                            {/* Zobrazení obrázků, pokud existují */}
+                            {subContent.imageUrls && subContent.imageUrls.length > 0 && (
+                              <div className="my-3 space-y-6">
+                                {subContent.imageUrls.map((imageUrl, index) => (
+                                  <div key={index} className="flex flex-col md:flex-row gap-4 bg-white/5 p-3 rounded-lg">
+                                    <div 
+                                      className="w-full md:w-40 h-40 flex-shrink-0 cursor-pointer" 
+                                      onClick={() => {
+                                        const altText = subContent.alternativeTexts?.[index] || (subContent.title ? subContent.title : '');
+                                        if (imageUrl) {
+                                          openLightbox(imageUrl, altText);
+                                        }
+                                      }}
+                                    >
+                                      <div className="relative h-40 w-full rounded-lg overflow-hidden border border-gray-700">
+                                        <Image
+                                          src={imageUrl}
+                                          alt={subContent.alternativeTexts?.[index] || subContent.title || ''}
+                                          fill
+                                          sizes="(max-width: 640px) 100vw, 160px"
+                                          className="object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
+                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-white">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                          </svg>
+                                        </div>
+                                      </div>
+                                      {subContent.alternativeTexts?.[index] && (
+                                        <p className="text-xs text-gray-400 mt-1">{subContent.alternativeTexts[index]}</p>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex-1">
+                                      {index === 0 && (
+                                        <>
+                                          {subContent.description && (
+                                            <p className="text-gray-300 mb-3">{subContent.description}</p>
+                                          )}
+                                          
+                                          {subContent.content && (
+                                            <div className="bg-white/5 p-4 rounded-lg mb-3">
+                                              <p className="text-gray-200 whitespace-pre-line">{subContent.content}</p>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                      
+                                      {/* Zobrazit obsah konkrétního obrázku, pokud existuje */}
+                                      {subContent.imageContents?.[index] && (
+                                        <div className="bg-white/5 p-4 rounded-lg mt-2">
+                                          <p className="text-gray-200 whitespace-pre-line">{subContent.imageContents[index]}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })
@@ -512,6 +839,36 @@ export default function SubCategoryDetailPage({ params }: { params: { id: string
                 </div>
               </div>
             </>
+          )}
+          
+          {/* Lightbox pro zobrazení zvětšeného obrázku */}
+          {lightboxOpen && (
+            <div 
+              className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+              onClick={closeLightbox}
+            >
+              <button 
+                className="absolute top-4 right-4 text-white p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+                onClick={closeLightbox}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="relative max-w-4xl max-h-[80vh] w-full" onClick={(e) => e.stopPropagation()}>
+                <Image
+                  src={lightboxImage}
+                  alt={lightboxAlt}
+                  width={1200}
+                  height={800}
+                  className="object-contain mx-auto max-h-[80vh]"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {lightboxAlt && (
+                  <p className="text-white text-center mt-2">{lightboxAlt}</p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
