@@ -4,6 +4,10 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
+// Použití nové konfigurace segmentu Route
+export const dynamic = 'force-dynamic'; // Zajistíme, že handler bude dynamický
+export const runtime = 'nodejs'; // Specifikujeme, že používáme Node.js runtime pro přístup k filesystému
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -68,11 +72,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Nastavení maximální velikosti požadavku
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}; 
+} 
