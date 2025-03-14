@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { Category } from '@/models/Category';
+import { Category, ISubCategory } from '@/models/Category';
 import mongoose from 'mongoose';
 
 // POST /api/categories/[id]/subcategory - Přidání nové subkategorie ke kategorii
@@ -62,7 +62,7 @@ export async function POST(
     };
     
     console.log('Přidávám novou subkategorii:', newSubCategory);
-    category.subCategories.push(newSubCategory);
+    category.subCategories.push(newSubCategory as any);
     
     console.log('Ukládám změny...');
     await category.save();
