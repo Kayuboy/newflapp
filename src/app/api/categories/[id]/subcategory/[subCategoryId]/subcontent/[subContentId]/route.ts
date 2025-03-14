@@ -33,8 +33,16 @@ export async function GET(
       );
     }
     
+    // Kontrola, zda subCategories existuje
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json(
+        { error: 'Kategorie nemá žádné subkategorie' },
+        { status: 404 }
+      );
+    }
+    
     // Najít subkategorii
-    const subCategory = category.subCategories?.find(
+    const subCategory = category.subCategories.find(
       (sub: any) => sub._id.toString() === subCategoryId
     );
     
@@ -45,8 +53,16 @@ export async function GET(
       );
     }
     
+    // Kontrola, zda subContents existuje
+    if (!subCategory.subContents || subCategory.subContents.length === 0) {
+      return NextResponse.json(
+        { error: 'Subkategorie nemá žádné subcontenty' },
+        { status: 404 }
+      );
+    }
+    
     // Najít subcontent
-    const subContent = subCategory.subContents?.find(
+    const subContent = subCategory.subContents.find(
       (content: any) => content._id.toString() === subContentId
     );
     
@@ -59,6 +75,7 @@ export async function GET(
     
     return NextResponse.json(subContent);
   } catch (error) {
+    console.error('Chyba při získávání subcontentu:', error);
     return NextResponse.json(
       { error: 'Nastala chyba při získávání subcontentu' },
       { status: 500 }
@@ -105,25 +122,42 @@ export async function PUT(
       );
     }
     
+    // Kontrola, zda subCategories existuje
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json(
+        { error: 'Kategorie nemá žádné subkategorie' },
+        { status: 404 }
+      );
+    }
+    
     // Najít index subkategorie
-    const subCategoryIndex = category.subCategories?.findIndex(
+    const subCategoryIndex = category.subCategories.findIndex(
       (sub: any) => sub._id.toString() === subCategoryId
     );
     
-    if (subCategoryIndex === undefined || subCategoryIndex === -1 || !category.subCategories) {
+    if (subCategoryIndex === -1) {
       return NextResponse.json(
         { error: 'Subkategorie nebyla nalezena' },
         { status: 404 }
       );
     }
     
+    const subCategory = category.subCategories[subCategoryIndex];
+    
+    // Kontrola, zda subContents existuje
+    if (!subCategory.subContents || subCategory.subContents.length === 0) {
+      return NextResponse.json(
+        { error: 'Subkategorie nemá žádné subcontenty' },
+        { status: 404 }
+      );
+    }
+    
     // Najít index subcontentu
-    const subContentIndex = category.subCategories[subCategoryIndex].subContents?.findIndex(
+    const subContentIndex = subCategory.subContents.findIndex(
       (content: any) => content._id.toString() === subContentId
     );
     
-    if (subContentIndex === undefined || subContentIndex === -1 || 
-        !category.subCategories[subCategoryIndex].subContents) {
+    if (subContentIndex === -1) {
       return NextResponse.json(
         { error: 'Subcontent nebyl nalezen' },
         { status: 404 }
@@ -131,21 +165,22 @@ export async function PUT(
     }
     
     // Aktualizovat subcontent
-    const subContents = category.subCategories[subCategoryIndex].subContents;
+    const subContent = subCategory.subContents[subContentIndex];
     
-    subContents[subContentIndex].title = data.title;
-    subContents[subContentIndex].icon = data.icon;
-    subContents[subContentIndex].description = data.description || subContents[subContentIndex].description;
-    subContents[subContentIndex].content = data.content || subContents[subContentIndex].content;
-    subContents[subContentIndex].color = data.color || subContents[subContentIndex].color;
-    subContents[subContentIndex].imageUrls = data.imageUrls || subContents[subContentIndex].imageUrls;
-    subContents[subContentIndex].alternativeTexts = data.alternativeTexts || subContents[subContentIndex].alternativeTexts;
-    subContents[subContentIndex].imageContents = data.imageContents || subContents[subContentIndex].imageContents;
+    subContent.title = data.title;
+    subContent.icon = data.icon;
+    subContent.description = data.description || subContent.description;
+    subContent.content = data.content || subContent.content;
+    subContent.color = data.color || subContent.color;
+    subContent.imageUrls = data.imageUrls || subContent.imageUrls;
+    subContent.alternativeTexts = data.alternativeTexts || subContent.alternativeTexts;
+    subContent.imageContents = data.imageContents || subContent.imageContents;
     
     await category.save();
     
-    return NextResponse.json(category);
+    return NextResponse.json(subContent);
   } catch (error) {
+    console.error('Chyba při aktualizaci subcontentu:', error);
     return NextResponse.json(
       { error: 'Nastala chyba při aktualizaci subcontentu' },
       { status: 500 }
@@ -159,12 +194,10 @@ export async function DELETE(
   { params }: { params: { id: string; subCategoryId: string; subContentId: string } }
 ) {
   try {
-    await connectToDatabase();
-    
-    const { id, subCategoryId, subContentId } = params;
+    const { id: categoryId, subCategoryId, subContentId } = params;
     
     // Kontrola platnosti ID
-    if (!mongoose.Types.ObjectId.isValid(id) || 
+    if (!mongoose.Types.ObjectId.isValid(categoryId) || 
         !mongoose.Types.ObjectId.isValid(subCategoryId) || 
         !mongoose.Types.ObjectId.isValid(subContentId)) {
       return NextResponse.json(
@@ -173,8 +206,11 @@ export async function DELETE(
       );
     }
     
+    // Připojení k databázi
+    await connectToDatabase();
+    
     // Najít kategorii
-    const category = await Category.findById(id);
+    const category = await Category.findById(categoryId);
     
     if (!category) {
       return NextResponse.json(
@@ -183,25 +219,42 @@ export async function DELETE(
       );
     }
     
+    // Kontrola, zda subCategories existuje
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json(
+        { error: 'Kategorie nemá žádné subkategorie' },
+        { status: 404 }
+      );
+    }
+    
     // Najít index subkategorie
-    const subCategoryIndex = category.subCategories?.findIndex(
+    const subCategoryIndex = category.subCategories.findIndex(
       (sub: any) => sub._id.toString() === subCategoryId
     );
     
-    if (subCategoryIndex === undefined || subCategoryIndex === -1 || !category.subCategories) {
+    if (subCategoryIndex === -1) {
       return NextResponse.json(
         { error: 'Subkategorie nebyla nalezena' },
         { status: 404 }
       );
     }
     
+    const subCategory = category.subCategories[subCategoryIndex];
+    
+    // Kontrola, zda subContents existuje
+    if (!subCategory.subContents || subCategory.subContents.length === 0) {
+      return NextResponse.json(
+        { error: 'Subkategorie nemá žádné subcontenty' },
+        { status: 404 }
+      );
+    }
+    
     // Najít index subcontentu
-    const subContentIndex = category.subCategories[subCategoryIndex].subContents?.findIndex(
+    const subContentIndex = subCategory.subContents.findIndex(
       (content: any) => content._id.toString() === subContentId
     );
     
-    if (subContentIndex === undefined || subContentIndex === -1 || 
-        !category.subCategories[subCategoryIndex].subContents) {
+    if (subContentIndex === -1) {
       return NextResponse.json(
         { error: 'Subcontent nebyl nalezen' },
         { status: 404 }
@@ -209,12 +262,14 @@ export async function DELETE(
     }
     
     // Odstranit subcontent
-    category.subCategories[subCategoryIndex].subContents.splice(subContentIndex, 1);
+    subCategory.subContents.splice(subContentIndex, 1);
     
+    // Uložit změny
     await category.save();
     
-    return NextResponse.json(category);
+    return NextResponse.json({ message: 'Subcontent úspěšně odstraněn' });
   } catch (error) {
+    console.error('Chyba při mazání subcontentu:', error);
     return NextResponse.json(
       { error: 'Nastala chyba při mazání subcontentu' },
       { status: 500 }
@@ -222,22 +277,25 @@ export async function DELETE(
   }
 }
 
+// PATCH /api/categories/[id]/subcategory/[subCategoryId]/subcontent/[subContentId] - Částečná aktualizace subcontentu
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; subCategoryId: string; subContentId: string } }
 ) {
   try {
-    const categoryId = params.id;
-    const subCategoryId = params.subCategoryId;
-    const subContentId = params.subContentId;
-
-    // Ověření platnosti ID
+    const { id: categoryId, subCategoryId, subContentId } = params;
+    const updates = await request.json();
+    
+    // Kontrola platnosti ID
     if (!mongoose.Types.ObjectId.isValid(categoryId) || 
-        !mongoose.Types.ObjectId.isValid(subCategoryId) ||
+        !mongoose.Types.ObjectId.isValid(subCategoryId) || 
         !mongoose.Types.ObjectId.isValid(subContentId)) {
-      return NextResponse.json({ error: 'Neplatné ID' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Neplatné ID kategorie, subkategorie nebo subcontentu' },
+        { status: 400 }
+      );
     }
-
+    
     // Připojení k databázi
     await connectToDatabase();
 
@@ -246,49 +304,55 @@ export async function PATCH(
     if (!category) {
       return NextResponse.json({ error: 'Kategorie nenalezena' }, { status: 404 });
     }
+    
+    // Kontrola, zda subCategories existuje
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json({ error: 'Kategorie nemá žádné subkategorie' }, { status: 404 });
+    }
 
-    // Ověření existence subkategorie
-    const subCategory = category.subCategories.id(subCategoryId);
-    if (!subCategory) {
+    // Najít subkategorii
+    const subCategoryIndex = category.subCategories.findIndex(
+      (sub: any) => sub._id.toString() === subCategoryId
+    );
+    
+    if (subCategoryIndex === -1) {
       return NextResponse.json({ error: 'Subkategorie nenalezena' }, { status: 404 });
     }
+    
+    const subCategory = category.subCategories[subCategoryIndex];
+    
+    // Kontrola, zda subContents existuje
+    if (!subCategory.subContents || subCategory.subContents.length === 0) {
+      return NextResponse.json({ error: 'Subkategorie nemá žádné subcontenty' }, { status: 404 });
+    }
 
-    // Ověření existence subcontentu
-    const subContent = subCategory.subContents.id(subContentId);
-    if (!subContent) {
+    // Najít subcontent
+    const subContentIndex = subCategory.subContents.findIndex(
+      (content: any) => content._id.toString() === subContentId
+    );
+    
+    if (subContentIndex === -1) {
       return NextResponse.json({ error: 'Subcontent nenalezen' }, { status: 404 });
     }
-
-    // Zpracování dat z požadavku
-    const data = await request.json();
-
-    // Ověření povinných polí
-    if (!data.title || !data.icon) {
-      return NextResponse.json(
-        { error: 'Název a ikona jsou povinné' },
-        { status: 400 }
-      );
-    }
-
-    // Aktualizace subcontentu
-    subContent.title = data.title;
-    subContent.icon = data.icon;
-    subContent.description = data.description !== undefined ? data.description : subContent.description;
-    subContent.content = data.content !== undefined ? data.content : subContent.content;
-    subContent.color = data.color || subContent.color;
-    subContent.imageUrls = data.imageUrls || subContent.imageUrls;
-    subContent.alternativeTexts = data.alternativeTexts || subContent.alternativeTexts;
-    subContent.imageContents = data.imageContents || subContent.imageContents;
-
-    // Uložení změn
+    
+    // Aktualizace polí subcontentu
+    const subContent = subCategory.subContents[subContentIndex];
+    
+    // Aktualizovat jen ta pole, která byla poslána
+    Object.keys(updates).forEach(key => {
+      // @ts-ignore - Ignorujeme typové chyby pro dynamický přístup k vlastnostem
+      if (subContent[key] !== undefined) {
+        // @ts-ignore
+        subContent[key] = updates[key];
+      }
+    });
+    
+    // Uložit změny
     await category.save();
-
-    return NextResponse.json(
-      { message: 'Subcontent byl úspěšně aktualizován' },
-      { status: 200 }
-    );
+    
+    return NextResponse.json(subContent);
   } catch (error) {
-    console.error('Chyba při aktualizaci subcontentu:', error);
+    console.error('Chyba při částečné aktualizaci subcontentu:', error);
     return NextResponse.json(
       { error: 'Nastala chyba při aktualizaci subcontentu' },
       { status: 500 }
