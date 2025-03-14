@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ICategory } from '@/models/Category';
 import { renderIcon } from '@/utils/renderIcon';
 import AdminGuard from '@/components/AdminGuard';
@@ -14,14 +14,17 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  const fetchCategories = async () => {
+  // Použití useCallback pro memoizaci fetchCategories funkce
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/categories', {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
-        }
+        },
+        // Přidání timestamp pro vyhnutí se cache
+        next: { revalidate: 0 }
       });
       
       if (!response.ok) {
@@ -29,7 +32,6 @@ export default function Home() {
       }
       
       const data = await response.json();
-      console.log('Načtená data kategorií:', data);
       setCategories(data);
     } catch (err) {
       console.error('Chyba při načítání kategorií:', err);
@@ -37,24 +39,32 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // Optimalizovaný useEffect pro obnovení dat
   useEffect(() => {
     fetchCategories();
-  }, [refreshKey]);
-
-  // Přidání event listeneru pro obnovení při návratu na stránku
-  useEffect(() => {
+    
+    // Omezení četnosti event listenerů - debouncing
+    let visibilityTimeout: NodeJS.Timeout;
+    let focusTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Stránka je znovu viditelná, obnovovací data...');
-        setRefreshKey(prevKey => prevKey + 1);
+        // Použití timeoutu pro omezení příliš častého volání
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          setRefreshKey(prevKey => prevKey + 1);
+        }, 1000);
       }
     };
 
     const handleFocus = () => {
-      console.log('Okno získalo focus, obnovovací data...');
-      setRefreshKey(prevKey => prevKey + 1);
+      // Použití timeoutu pro omezení příliš častého volání
+      clearTimeout(focusTimeout);
+      focusTimeout = setTimeout(() => {
+        setRefreshKey(prevKey => prevKey + 1);
+      }, 1000);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -63,21 +73,32 @@ export default function Home() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      clearTimeout(visibilityTimeout);
+      clearTimeout(focusTimeout);
     };
-  }, []);
+  }, [fetchCategories]);
 
-  // Filtrování kategorií podle vyhledávacího termínu
-  const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
+  // Použití useMemo pro filtrování kategorií - výpočet se provede pouze když se změní searchTerm nebo categories
+  const filteredCategories = useMemo(() => 
+    categories.filter(category => 
+      category.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      category.description.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [categories, searchTerm]
+  );
+
+  // Memoizované doporučené kategorie
+  const recommendedCategories = useMemo(() => 
+    filteredCategories.filter(cat => cat.isRecommended === true).slice(0, 3),
+    [filteredCategories]
   );
 
   // Generování náhodné barvy pro kategorie, které nemají nastavenou barvu
-  const getColorClass = (color?: string) => {
+  const getColorClass = useCallback((color?: string) => {
     if (color) return color;
     const colors = ['#f8a287', '#e27d60', '#c38d9e', '#41b3a3', '#5c6bc0', '#8d6e63'];
     return colors[Math.floor(Math.random() * colors.length)];
-  };
+  }, []);
 
   return (
     <div className="container mx-auto px-4">
@@ -203,32 +224,29 @@ export default function Home() {
             {!loading && filteredCategories.length > 0 ? (
               <>
                 {/* Filtrujeme doporučené kategorie a zobrazíme max 3 */}
-                {filteredCategories.filter(cat => cat.isRecommended === true).slice(0, 3).length > 0 ? (
+                {recommendedCategories.length > 0 ? (
                   <div className="space-y-3">
-                    {filteredCategories
-                      .filter(cat => cat.isRecommended === true)
-                      .slice(0, 3)
-                      .map((category) => (
-                        <Link href={`/categories/${category._id}`} key={category._id?.toString()} className="category-card block">
-                          <div className="flex items-center">
-                            <div 
-                              className="category-icon"
-                              style={{ backgroundColor: getColorClass(category.color) }}
-                            >
-                              {renderIcon(category.icon || 'academic-cap')}
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-semibold">{category.name}</h4>
-                              <p className="text-sm text-gray-500 line-clamp-1">{category.description}</p>
-                            </div>
-                            <div className="text-[#f8a287]">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                              </svg>
-                            </div>
+                    {recommendedCategories.map((category) => (
+                      <Link href={`/categories/${category._id}`} key={category._id?.toString()} className="category-card block">
+                        <div className="flex items-center">
+                          <div 
+                            className="category-icon"
+                            style={{ backgroundColor: getColorClass(category.color) }}
+                          >
+                            {renderIcon(category.icon || 'academic-cap')}
                           </div>
-                        </Link>
-                      ))}
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{category.name}</h4>
+                            <p className="text-sm text-gray-500 line-clamp-1">{category.description}</p>
+                          </div>
+                          <div className="text-[#f8a287]">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-6 bg-gray-800/30 rounded-xl">

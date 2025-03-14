@@ -1,7 +1,40 @@
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 
-// Funkce pro vykreslení ikony podle názvu, kterou lze použít kdekoliv v aplikaci
+// Cache pro uložení již vygenerovaných ikon
+const iconCache: {[key: string]: React.ReactNode} = {};
+
+// Memoizovaná komponenta pro vykreslení ikony
+const MemoizedIcon = memo(({ iconName, className = "w-6 h-6" }: { iconName: string, className?: string }) => {
+  // Vytvořme unikátní klíč pro cachování
+  const cacheKey = `${iconName}_${className}`;
+  
+  // Použijme useMemo pro vytvoření SVG pouze jednou pro danou kombinaci názvu a třídy
+  const icon = useMemo(() => {
+    // Pokud už máme ikonu v cache, vrátíme ji
+    if (iconCache[cacheKey]) {
+      return iconCache[cacheKey];
+    }
+    
+    // Jinak vytvoříme novou ikonu a uložíme ji do cache
+    const renderedIcon = _renderIconSvg(iconName, className);
+    iconCache[cacheKey] = renderedIcon;
+    return renderedIcon;
+  }, [iconName, className, cacheKey]);
+  
+  return <>{icon}</>;
+});
+
+// Nový export pro použití memoizované komponenty - doporučený způsob
+export const IconComponent = MemoizedIcon;
+
+// Export původní funkce pro zpětnou kompatibilitu
 export const renderIcon = (iconName: string, className: string = "w-6 h-6") => {
+  // Pro staré použití vrátíme přímo SVG
+  return _renderIconSvg(iconName, className);
+};
+
+// Pomocná funkce pro vykreslení SVG ikony podle názvu
+function _renderIconSvg(iconName: string, className: string = "w-6 h-6") {
   switch (iconName) {
     case 'academic-cap':
       return (
@@ -192,6 +225,6 @@ export const renderIcon = (iconName: string, className: string = "w-6 h-6") => {
         </svg>
       );
   }
-};
+}
 
 export default renderIcon; 
