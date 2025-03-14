@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { Category } from '@/models/Category';
+import { Category, ISubCategory, ISubContent } from '@/models/Category';
 import mongoose from 'mongoose';
 
 // PUT /api/categories/[id]/subcontent/[subContentId] - Aktualizace sub-contentu v kategorii
@@ -15,10 +15,10 @@ export async function PUT(
     console.log('Aktualizace sub-contentu:', { categoryId: id, subContentId });
     
     // Kontrola platnosti ID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.error('Neplatné ID kategorie:', id);
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(subContentId)) {
+      console.error('Neplatné ID kategorie nebo subcontentu:', { id, subContentId });
       return NextResponse.json(
-        { error: 'Neplatné ID kategorie' },
+        { error: 'Neplatné ID kategorie nebo subcontentu' },
         { status: 400 }
       );
     }
@@ -46,40 +46,84 @@ export async function PUT(
       );
     }
     
-    // Aktualizace sub-contentu
-    if (category.subContents && category.subContents.length > 0) {
-      const subContentIndex = category.subContents.findIndex(
-        // @ts-ignore - Ignorujeme typovou chybu, protože víme, že _id existuje
-        (sc) => sc._id && sc._id.toString() === subContentId
+    // Kontrola, zda existují subkategorie
+    if (!category.subCategories || category.subCategories.length === 0) {
+      console.error('Kategorie nemá žádné subkategorie');
+      return NextResponse.json(
+        { error: 'Kategorie nemá žádné subkategorie' },
+        { status: 404 }
       );
+    }
+
+    // Prohledat všechny subkategorie a najít subcontent
+    let found = false;
+    for (let i = 0; i < category.subCategories.length; i++) {
+      const subCategory = category.subCategories[i];
       
-      if (subContentIndex === -1) {
-        console.error('Sub-content nebyl nalezen:', subContentId);
-        return NextResponse.json(
-          { error: 'Sub-content nebyl nalezen' },
-          { status: 404 }
-        );
+      // Kontrola, zda existují subcontenty
+      if (!subCategory.subContents || subCategory.subContents.length === 0) {
+        continue;
       }
       
-      console.log('Nalezen sub-content na indexu:', subContentIndex);
+      // Najít index subcontentu
+      const subContentIndex = subCategory.subContents.findIndex(
+        (content: ISubContent) => (content._id as unknown as mongoose.Types.ObjectId).toString() === subContentId
+      );
       
-      // Aktualizace sub-contentu
-      category.subContents[subContentIndex].title = data.title;
-      category.subContents[subContentIndex].icon = data.icon;
-      category.subContents[subContentIndex].description = data.description || '';
-      category.subContents[subContentIndex].content = data.content || '';
-      category.subContents[subContentIndex].color = data.color || '#f8a287';
-      
-      console.log('Ukládám změny...');
-      await category.save();
-      console.log('Změny uloženy');
+      if (subContentIndex !== -1) {
+        // Našli jsme subcontent, aktualizujeme ho
+        console.log('Nalezen subcontent v subkategorii:', subCategory.name);
+        
+        // Aktualizace subcontentu
+        subCategory.subContents[subContentIndex].title = data.title;
+        subCategory.subContents[subContentIndex].icon = data.icon;
+        
+        if (data.description !== undefined) {
+          subCategory.subContents[subContentIndex].description = data.description;
+        }
+        
+        if (data.content !== undefined) {
+          subCategory.subContents[subContentIndex].content = data.content;
+        }
+        
+        if (data.color !== undefined) {
+          subCategory.subContents[subContentIndex].color = data.color;
+        }
+        
+        if (data.imageUrls !== undefined) {
+          subCategory.subContents[subContentIndex].imageUrls = data.imageUrls;
+        }
+        
+        if (data.alternativeTexts !== undefined) {
+          subCategory.subContents[subContentIndex].alternativeTexts = data.alternativeTexts;
+        }
+        
+        if (data.imageContents !== undefined) {
+          subCategory.subContents[subContentIndex].imageContents = data.imageContents;
+        }
+        
+        found = true;
+        break;
+      }
     }
     
-    return NextResponse.json(category);
+    if (!found) {
+      console.error('Subcontent nebyl nalezen:', subContentId);
+      return NextResponse.json(
+        { error: 'Subcontent nebyl nalezen' },
+        { status: 404 }
+      );
+    }
+    
+    console.log('Ukládám změny...');
+    await category.save();
+    console.log('Změny uloženy');
+    
+    return NextResponse.json({ message: 'Subcontent byl úspěšně aktualizován' });
   } catch (error) {
-    console.error('Chyba při aktualizaci sub-contentu:', error);
+    console.error('Chyba při aktualizaci subcontentu:', error);
     return NextResponse.json(
-      { error: 'Nastala chyba při aktualizaci sub-contentu' },
+      { error: 'Nastala chyba při aktualizaci subcontentu' },
       { status: 500 }
     );
   }
@@ -94,18 +138,18 @@ export async function DELETE(
     await connectToDatabase();
     
     const { id, subContentId } = params;
-    console.log('Mazání sub-contentu:', { categoryId: id, subContentId });
+    console.log('Mazání subcontentu:', { categoryId: id, subContentId });
     
     // Kontrola platnosti ID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.error('Neplatné ID kategorie:', id);
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(subContentId)) {
+      console.error('Neplatné ID kategorie nebo subcontentu:', { id, subContentId });
       return NextResponse.json(
-        { error: 'Neplatné ID kategorie' },
+        { error: 'Neplatné ID kategorie nebo subcontentu' },
         { status: 400 }
       );
     }
     
-    // Najít kategorii a odstranit sub-content
+    // Najít kategorii
     const category = await Category.findById(id);
     
     if (!category) {
@@ -116,25 +160,58 @@ export async function DELETE(
       );
     }
     
-    // Odstranění sub-contentu
-    if (category.subContents && category.subContents.length > 0) {
-      const subContentCount = category.subContents.length;
-      category.subContents = category.subContents.filter(
-        // @ts-ignore - Ignorujeme typovou chybu, protože víme, že _id existuje
-        (sc) => sc._id && sc._id.toString() !== subContentId
+    // Kontrola, zda existují subkategorie
+    if (!category.subCategories || category.subCategories.length === 0) {
+      console.error('Kategorie nemá žádné subkategorie');
+      return NextResponse.json(
+        { error: 'Kategorie nemá žádné subkategorie' },
+        { status: 404 }
+      );
+    }
+
+    // Prohledat všechny subkategorie a najít subcontent
+    let found = false;
+    for (let i = 0; i < category.subCategories.length; i++) {
+      const subCategory = category.subCategories[i];
+      
+      // Kontrola, zda existují subcontenty
+      if (!subCategory.subContents || subCategory.subContents.length === 0) {
+        continue;
+      }
+      
+      // Před odstraněním si zapamatovat počet subcontentů
+      const originalLength = subCategory.subContents.length;
+      
+      // Odfiltrovat subcontent podle ID
+      subCategory.subContents = subCategory.subContents.filter(
+        (content: ISubContent) => (content._id as unknown as mongoose.Types.ObjectId).toString() !== subContentId
       );
       
-      console.log(`Odstraněno ${subContentCount - category.subContents.length} sub-contentů`);
-      
-      await category.save();
-      console.log('Změny uloženy');
+      // Zkontrolovat, zda byl nějaký subcontent odstraněn
+      if (subCategory.subContents.length < originalLength) {
+        found = true;
+        console.log(`Odstraněn subcontent z subkategorie: ${subCategory.name}`);
+        break;
+      }
     }
     
-    return NextResponse.json(category);
+    if (!found) {
+      console.error('Subcontent nebyl nalezen:', subContentId);
+      return NextResponse.json(
+        { error: 'Subcontent nebyl nalezen' },
+        { status: 404 }
+      );
+    }
+    
+    console.log('Ukládám změny...');
+    await category.save();
+    console.log('Změny uloženy');
+    
+    return NextResponse.json({ message: 'Subcontent byl úspěšně odstraněn' });
   } catch (error) {
-    console.error('Chyba při odstraňování sub-contentu:', error);
+    console.error('Chyba při odstraňování subcontentu:', error);
     return NextResponse.json(
-      { error: 'Nastala chyba při odstraňování sub-contentu' },
+      { error: 'Nastala chyba při odstraňování subcontentu' },
       { status: 500 }
     );
   }
