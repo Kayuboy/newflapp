@@ -2,13 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Category } from '@/models/Category';
 
+// Cache pro uložení výsledků dotazů
+let categoriesCache: any[] = [];
+let lastFetchTime = 0;
+const CACHE_DURATION = 60 * 1000; // 1 minuta v ms
+
 // GET /api/categories - Získání všech kategorií
 export async function GET() {
   try {
+    // Kontrola, zda máme platná data v cache
+    const currentTime = Date.now();
+    if (categoriesCache.length > 0 && currentTime - lastFetchTime < CACHE_DURATION) {
+      console.log('Vracím kategorie z cache');
+      return NextResponse.json(categoriesCache, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      });
+    }
+
     await connectToDatabase();
-    const categories = await Category.find({}).sort({ createdAt: -1 });
     
-    return NextResponse.json(categories);
+    // Omezíme množství navrácených dat na pouze potřebné pole
+    // Použijeme lean() pro získání pouze čistých JavaScript objektů místo Mongoose dokumentů
+    const categories = await Category.find({})
+      .select('name description icon color isRecommended createdAt updatedAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Aktualizace cache
+    categoriesCache = categories;
+    lastFetchTime = currentTime;
+    
+    return NextResponse.json(categories, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error) {
     console.error('Chyba při získávání kategorií:', error);
     return NextResponse.json(
@@ -41,6 +71,9 @@ export async function POST(request: NextRequest) {
       color: body.color || '#f8a287',
       isRecommended: body.isRecommended || false,
     });
+    
+    // Vynulování cache po vytvoření nové kategorie
+    categoriesCache = [];
     
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error: any) {
