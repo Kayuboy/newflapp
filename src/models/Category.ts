@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ISubContent extends Document {
   title: string;
@@ -97,13 +97,14 @@ const SubCategorySchema = new Schema<ISubCategory>(
   }
 );
 
-const CategorySchema = new Schema<ICategory>(
+const CategorySchema = new Schema(
   {
     name: {
       type: String,
       required: [true, 'Název kategorie je povinný'],
       trim: true,
-      maxlength: [100, 'Název kategorie nemůže být delší než 100 znaků'],
+      maxlength: [50, 'Název kategorie nemůže být delší než 50 znaků'],
+      index: true,
     },
     description: {
       type: String,
@@ -122,13 +123,42 @@ const CategorySchema = new Schema<ICategory>(
     isRecommended: {
       type: Boolean,
       default: false,
+      index: true,
     },
     subCategories: [SubCategorySchema],
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+    id: false,
   }
 );
 
-// Pokud model již existuje, použijeme ho, jinak vytvoříme nový
-export const Category = mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema); 
+CategorySchema.index({ isRecommended: 1, createdAt: -1 });
+CategorySchema.index({ name: 1 }, { unique: true });
+
+CategorySchema.pre('save', function(next) {
+  this.name = this.name.trim();
+  this.description = this.description.trim();
+  
+  if (!this.name) {
+    return next(new Error('Název kategorie je povinný'));
+  }
+  
+  if (!this.description) {
+    return next(new Error('Popis kategorie je povinný'));
+  }
+  
+  next();
+});
+
+let Category: Model<ICategory>;
+
+try {
+  Category = mongoose.model<ICategory>('Category');
+} catch (e) {
+  Category = mongoose.model<ICategory>('Category', CategorySchema);
+}
+
+export { Category }; 

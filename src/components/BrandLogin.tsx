@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
@@ -11,23 +11,23 @@ const BrandLogin = () => {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
   
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
-  };
+  }, []);
   
-  const handleLoginClick = () => {
+  const handleLoginClick = useCallback(() => {
     handleMenuClose();
     router.push('/admin/login');
-  };
+  }, [handleMenuClose, router]);
   
-  const handleLogoutClick = async () => {
+  const handleLogoutClick = useCallback(async () => {
     handleMenuClose();
     await logout();
-  };
+  }, [handleMenuClose, logout]);
   
   return (
     <>
@@ -76,4 +76,5 @@ const BrandLogin = () => {
   );
 };
 
-export default BrandLogin; 
+// Použití memo pro předejití zbytečným renderům
+export default memo(BrandLogin); 

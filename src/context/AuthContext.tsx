@@ -103,9 +103,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        // Předejití zbytečnému ověřování, pokud již máme uživatele
+        if (user) return;
+        
         setLoading(true);
         
-        const response = await fetch('/api/auth/me');
+        // Přidání timestamp pro vyhnutí se cache
+        const response = await fetch('/api/auth/me', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
+        });
+        
         const data = await response.json();
         
         if (response.ok && data.authenticated) {
@@ -122,7 +132,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
     
     checkAuthStatus();
-  }, []);
+    
+    // Omezení opakovaného ověřování - přidání intervalu místo neustálého dotazování
+    const authCheckInterval = setInterval(checkAuthStatus, 5 * 60 * 1000);  // Ověření každých 5 minut
+    
+    return () => {
+      clearInterval(authCheckInterval);
+    };
+  }, [user]);
 
   const value = {
     user,
