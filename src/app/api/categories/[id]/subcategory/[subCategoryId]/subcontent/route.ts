@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
-import { Category } from '@/models/Category';
+import { Category, ISubCategory, ISubContent } from '@/models/Category';
 
 // POST /api/categories/[id]/subcategory/[subCategoryId]/subcontent - Přidání nového sub-contentu k subkategorii
 export async function POST(
@@ -35,11 +35,24 @@ export async function POST(
       return NextResponse.json({ error: 'Kategorie nenalezena' }, { status: 404 });
     }
 
+    // Kontrola existence subCategories
+    if (!category.subCategories || category.subCategories.length === 0) {
+      console.log('Kategorie nemá žádné subkategorie');
+      return NextResponse.json({ error: 'Kategorie nemá žádné subkategorie' }, { status: 404 });
+    }
+
     // Ověření existence subkategorie
-    const subCategory = category.subCategories.id(subCategoryId);
+    const subCategory = category.subCategories.find(
+      (sub: ISubCategory) => (sub._id as unknown as mongoose.Types.ObjectId).toString() === subCategoryId
+    );
     if (!subCategory) {
       console.log('Subkategorie nenalezena:', subCategoryId);
       return NextResponse.json({ error: 'Subkategorie nenalezena' }, { status: 404 });
+    }
+
+    // Kontrola existence subContents
+    if (!subCategory.subContents) {
+      subCategory.subContents = [];
     }
 
     // Zpracování dat z požadavku
@@ -67,7 +80,8 @@ export async function POST(
       imageContents: data.imageContents || []
     };
 
-    subCategory.subContents.push(newSubContent);
+    // Typujeme newSubContent jako Partial<ISubContent>
+    subCategory.subContents.push(newSubContent as any);
 
     // Uložení změn
     await category.save();
@@ -111,14 +125,28 @@ export async function PATCH(
       return NextResponse.json({ error: 'Kategorie nenalezena' }, { status: 404 });
     }
 
+    // Kontrola existence subCategories
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json({ error: 'Kategorie nemá žádné subkategorie' }, { status: 404 });
+    }
+
     // Ověření existence subkategorie
-    const subCategory = category.subCategories.id(subCategoryId);
+    const subCategory = category.subCategories.find(
+      (sub: ISubCategory) => (sub._id as unknown as mongoose.Types.ObjectId).toString() === subCategoryId
+    );
     if (!subCategory) {
       return NextResponse.json({ error: 'Subkategorie nenalezena' }, { status: 404 });
     }
 
+    // Kontrola existence subContents
+    if (!subCategory.subContents) {
+      return NextResponse.json({ error: 'Subkategorie nemá žádné subcontenty' }, { status: 404 });
+    }
+
     // Ověření existence subcontentu
-    const subContent = subCategory.subContents.id(subContentId);
+    const subContent = subCategory.subContents.find(
+      (content: ISubContent) => (content._id as unknown as mongoose.Types.ObjectId).toString() === subContentId
+    );
     if (!subContent) {
       return NextResponse.json({ error: 'Subcontent nenalezen' }, { status: 404 });
     }
@@ -185,14 +213,28 @@ export async function DELETE(
       return NextResponse.json({ error: 'Kategorie nenalezena' }, { status: 404 });
     }
 
+    // Kontrola existence subCategories
+    if (!category.subCategories || category.subCategories.length === 0) {
+      return NextResponse.json({ error: 'Kategorie nemá žádné subkategorie' }, { status: 404 });
+    }
+
     // Ověření existence subkategorie
-    const subCategory = category.subCategories.id(subCategoryId);
+    const subCategory = category.subCategories.find(
+      (sub: ISubCategory) => (sub._id as unknown as mongoose.Types.ObjectId).toString() === subCategoryId
+    );
     if (!subCategory) {
       return NextResponse.json({ error: 'Subkategorie nenalezena' }, { status: 404 });
     }
 
+    // Kontrola existence subContents
+    if (!subCategory.subContents) {
+      return NextResponse.json({ error: 'Subkategorie nemá žádné subcontenty' }, { status: 404 });
+    }
+
     // Ověření existence subcontentu
-    const subContent = subCategory.subContents.id(subContentId);
+    const subContent = subCategory.subContents.find(
+      (content: ISubContent) => (content._id as unknown as mongoose.Types.ObjectId).toString() === subContentId
+    );
     if (!subContent) {
       return NextResponse.json({ error: 'Subcontent nenalezen' }, { status: 404 });
     }
